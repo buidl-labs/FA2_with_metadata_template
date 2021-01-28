@@ -191,13 +191,13 @@ if "templates" not in __name__:
         scenario += c1.mint(address = alice.address, 
                             amount = 1,
                             token_id = 1,
-                            metadata = {'uri': sp.bytes_of_string("<insert bot hash here>"), "symbol": sp.bytes_of_string("CB")}).run(sender = alice)
+                            metadata = {'uri': "insert bot hash here", "symbol":"CB"}).run(sender = alice)
         
         scenario += c1.mint(address = alice.address, 
                             amount = 1,
                             token_id = 5,
-                            metadata = {'uri': sp.bytes_of_string("<insert bot hash here>"),
-                            "symbol": sp.bytes_of_string("CB")}).run(sender = alice)
+                            metadata = {'uri': "insert bot hash here",
+                            "symbol": "CB" }).run(sender = alice)
         
         
         scenario += c1.offer_bot_for_sale(token_id = 5, sale_price = sp.mutez(1000)).run(sender = alice)
