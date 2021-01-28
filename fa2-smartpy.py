@@ -294,7 +294,7 @@ class Token_meta_data:
     def __init__(self, config):
         self.config = config
     def get_type(self):
-        t = sp.TMap(sp.TString, sp.TBytes)
+        t = sp.TMap(sp.TString, sp.TString)
         #t = sp.TRecord(
         #    token_id = token_id_type,
         #    symbol = sp.TString,
@@ -819,10 +819,11 @@ def add_test(config, is_default = True):
             return
         scenario.h2("Initial Minting")
         scenario.p("The administrator mints 100 token-0's to Alice.")
-        tok0_md = FA2.make_metadata(
-            name = "The Token Zero",
-            decimals = 2,
-            symbol= "TK0" )
+        tok0_md = {
+             "name" : "The Token Zero",
+            "decimals" : "2",
+            "symbol" : "TK0"
+        }
         scenario += c1.mint(address = alice.address,
                             amount = 100,
                             metadata = tok0_md,
@@ -898,18 +899,20 @@ def add_test(config, is_default = True):
         if config.single_asset:
             return
         scenario.h2("More Token Types")
-        tok1_md = FA2.make_metadata(
-            name = "The Second Token",
-            decimals = 0,
-            symbol= "TK1" )
+        tok1_md = {
+             "name" : "The Token Zero",
+            "decimals" : "2",
+            "symbol" : "TK0"
+        }
         scenario += c1.mint(address = bob.address,
                             amount = 100,
                             metadata = tok1_md,
                             token_id = 1).run(sender = admin)
-        tok2_md = FA2.make_metadata(
-            name = "The Token Number Three",
-            decimals = 0,
-            symbol= "TK2" )
+        tok2_md = {
+             "name" : "The Token Zero",
+            "decimals" : "2",
+            "symbol" : "TK0"
+        }
         scenario += c1.mint(address = bob.address,
                             amount = 200,
                             metadata = tok2_md,
