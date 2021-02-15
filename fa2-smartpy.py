@@ -6,7 +6,7 @@
 ##
 ## **WARNING:** This script requires the `/dev` version of SmartPy;
 ## the recommended version is given by the command:
-## `./please.sh get_smartpy_recommended_version`.
+## `./please.sh get_smartpy_recommended_version`.
 ##
 import smartpy as sp
 ##
@@ -294,7 +294,7 @@ class Token_meta_data:
     def __init__(self, config):
         self.config = config
     def get_type(self):
-        t = sp.TMap(sp.TString, sp.TString)
+        t = sp.TMap(sp.TString, sp.TBytes)
         #t = sp.TRecord(
         #    token_id = token_id_type,
         #    symbol = sp.TString,
@@ -674,22 +674,6 @@ class FA2(FA2_change_metadata, FA2_token_metadata, FA2_mint, FA2_administrator, 
         )
 
     def __init__(self, config, metadata, admin):
-        # Let's show off some meta-programming:
-        if config.assume_consecutive_token_ids:
-            self.all_tokens.doc = """
-            This view is specified (but optional) in the standard.
-
-            This contract is built with assume_consecutive_token_ids =
-            True, so we return a list constructed from the number of tokens.
-            """
-        else:
-            self.all_tokens.doc = """
-            This view is specified (but optional) in the standard.
-
-            This contract is built with assume_consecutive_token_ids =
-            False, so we convert the set of tokens from the storage to a list
-            to fit the expected type of TZIP-16.
-            """
         list_of_views = [
             self.get_balance
             , self.token_metadata
@@ -700,53 +684,7 @@ class FA2(FA2_change_metadata, FA2_token_metadata, FA2_mint, FA2_administrator, 
         ]
         if config.store_total_supply:
             list_of_views = list_of_views + [self.total_supply]
-        if False: # Experiment thing:
-            list_of_views = list_of_views + [
-                {
-                    "name": "x-plus-two",
-                    "description": (
-                        "This view just show cases SmartPy's compilation of"
-                        " pure lambda expressions."
-                        "\n\n"
-                        "Currently not working as a TZIP-16-view, "
-                        "it's missing a CAR …"
-                    ),
-                    "pure": True,
-                    "implementations": [
-                        { "michelson-storage-view": lambda x : x + 2 }
-                    ]
-                }
-            ]
-        metadata_base = {
-            "version": config.name # will be changed if using fatoo.
-            , "description" : (
-                "This is a didactic reference implementation of FA2,"
-                + " a.k.a. TZIP-012, using SmartPy.\n\n"
-                + "This particular contract uses the configuration named: "
-                + config.name + "."
-            )
-            , "interfaces": ["TZIP-012-2020-12-24"]
-            , "authors": [
-                "Seb Mondet <https://seb.mondet.org>"
-            ]
-            , "homepage": "https://gitlab.com/smondet/fa2-smartpy"
-            , "views": list_of_views
-            , "source": {
-                "tools": ["SmartPy"]
-                , "location": "https://gitlab.com/smondet/fa2-smartpy.git"
-            }
-            , "permissions": {
-                "operator":
-                "owner-or-operator-transfer" if config.support_operator else "owner-transfer"
-                , "receiver": "owner-no-hook"
-                , "sender": "owner-no-hook"
-            }
-            , "fa2-smartpy": {
-                "configuration" :
-                dict([(k, getattr(config, k)) for k in dir(config) if "__" not in k and k != 'my_map'])
-            }
-        }
-        self.init_metadata("metadata_base", metadata_base)
+
         FA2_core.__init__(self, config, metadata,
                           paused = False, administrator = admin)
 
@@ -819,11 +757,10 @@ def add_test(config, is_default = True):
             return
         scenario.h2("Initial Minting")
         scenario.p("The administrator mints 100 token-0's to Alice.")
-        tok0_md = {
-             "name" : "The Token Zero",
-            "decimals" : "2",
-            "symbol" : "TK0"
-        }
+        tok0_md = FA2.make_metadata(
+            name = "The Token Zero",
+            decimals = 2,
+            symbol= "TK0" )
         scenario += c1.mint(address = alice.address,
                             amount = 100,
                             metadata = tok0_md,
@@ -899,20 +836,18 @@ def add_test(config, is_default = True):
         if config.single_asset:
             return
         scenario.h2("More Token Types")
-        tok1_md = {
-             "name" : "The Token Zero",
-            "decimals" : "2",
-            "symbol" : "TK0"
-        }
+        tok1_md = FA2.make_metadata(
+            name = "The Second Token",
+            decimals = 0,
+            symbol= "TK1" )
         scenario += c1.mint(address = bob.address,
                             amount = 100,
                             metadata = tok1_md,
                             token_id = 1).run(sender = admin)
-        tok2_md = {
-             "name" : "The Token Zero",
-            "decimals" : "2",
-            "symbol" : "TK0"
-        }
+        tok2_md = FA2.make_metadata(
+            name = "The Token Number Three",
+            decimals = 0,
+            symbol= "TK2" )
         scenario += c1.mint(address = bob.address,
                             amount = 200,
                             metadata = tok2_md,
