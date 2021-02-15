@@ -1,5 +1,5 @@
 import smartpy as sp
-FA2 = sp.import_script_from_url("https://raw.githubusercontent.com/buidl-labs/FA2_with_metadata_template/main/fa2-smartpy.py")
+FA2 = sp.import_script_from_url("https://raw.githubusercontent.com/buidl-labs/FA2_with_metadata_template/main/fa2-modified.py")
 
 class Offer:
     """
@@ -157,6 +157,28 @@ class Cryptobot(FA2.FA2):
              self.data.tokens[params.token_id] = self.token_meta_data.make(
                  amount = params.amount,
                  metadata = params.metadata)
+        
+    @sp.entry_point
+    def transfer(self, params):
+        sp.verify( ~self.is_paused() )
+        sp.set_type(params, self.batch_transfer.get_type())
+        sp.for transfer in params:
+           current_from = transfer.from_
+           sp.for tx in transfer.txs:
+                #sp.verify(tx.amount > 0, message = "TRANSFER_OF_ZERO")
+                self.verif_asset_exist(tx.token_id)
+                self.verif_transfer_rights(tx, current_from)
+                self.do_transfer(tx.token_id, tx.amount, tx.to_, current_from)
+                
+                # Remove bot from sale if true
+                user = self.ledger_key.make(current_from, tx.token_id)
+        
+                #Make sure that the caller is the owner of NFT token id else throw error 
+                sp.if self.data.ledger.contains(user):
+                    # Remove NFT token id from offers list
+                    sp.if self.data.offer.contains(tx.token_id):
+                        del self.data.offer[tx.token_id]
+        
 
 
 if "templates" not in __name__:
@@ -205,3 +227,11 @@ if "templates" not in __name__:
         # scenario += c1.purchase_bot_at_sale_price(token_id = 5).run(sender = bob, amount = sp.mutez(1000))
         
         scenario += c1.bot_no_longer_for_sale(token_id = 5).run(sender = alice)
+        scenario += c1.transfer(
+                [
+                    c1.batch_transfer.item(from_ = alice.address,
+                                        txs = [
+                                            sp.record(to_ = bob.address,
+                                                      amount = 1,
+                                                      token_id = 5)])
+                ]).run(sender = alice)
