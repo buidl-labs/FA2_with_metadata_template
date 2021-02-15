@@ -294,7 +294,7 @@ class Token_meta_data:
     def __init__(self, config):
         self.config = config
     def get_type(self):
-        t = sp.TMap(sp.TString, sp.TBytes)
+        t = sp.TMap(sp.TString, sp.TString)
         #t = sp.TRecord(
         #    token_id = token_id_type,
         #    symbol = sp.TString,
