@@ -160,7 +160,7 @@ class Cryptobot(FA2.FA2):
         
     @sp.entry_point
     def transfer(self, params):
-        sp.verify( ~self.is_paused() )
+        sp.verify(~ self.data.paused)
         sp.set_type(params, self.batch_transfer.get_type())
         sp.for transfer in params:
            current_from = transfer.from_
@@ -190,7 +190,7 @@ if "templates" not in __name__:
         scenario.table_of_contents()
 
         scenario.h2("Accounts")
-        admin = sp.address("tz1XP2AUZAaCbi1PCNQ7pEdMS1EEjL4p4YPY")
+        admin = sp.address("tz1iLVzBpCNTGz6tCBK2KHaQ8o44mmhLTBio")
         alice = sp.test_account("Alice")
         bob = sp.test_account("Bob")
 
@@ -201,7 +201,7 @@ if "templates" not in __name__:
         # TODO: add latest contract metadata json 
         
         c1 = Cryptobot( config = FA2.FA2_config(non_fungible = True, assume_consecutive_token_ids = False),
-                      metadata=sp.bytes_of_string("ipfs://QmRgkniro5VxsibVx5MgwcGnXRMna4g3zeLUwHEmS6r5kL"),
+                      metadata=sp.bytes_of_string("ipfs://QmeGcWmfPnnnFtfzPy2CyCww14iUvtgRgYRXF34Lzn6oQU"),
                       admin = admin
         )
         scenario += c1
