@@ -263,7 +263,7 @@ if "templates" not in __name__:
         # TODO: add latest contract metadata json 
         
         c1 = Cryptobot( config = FA2.FA2_config(non_fungible = True, assume_consecutive_token_ids = False, store_total_supply = False),
-                      metadata=sp.metadata_of_url("ipfs://QmeGcWmfPnnnFtfzPy2CyCww14iUvtgRgYRXF34Lzn6oQU"),
+                      metadata=sp.metadata_of_url("ipfs://Qmayz5PNcQf8GmDdQfoZfUdvwLFKSBxHU1snmhFbcabyNk"),
                       admin = admin
         )
         scenario += c1
