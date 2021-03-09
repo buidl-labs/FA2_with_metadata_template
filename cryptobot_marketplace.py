@@ -1,6 +1,6 @@
 import smartpy as sp
 
-FA2 = sp.import_script_from_url("https://smartpy.io/dev/templates/FA2.py")
+FA2 = sp.import_script_from_url("https://smartpy.io/templates/FA2.py")
 
 class Offer:
     """
@@ -26,6 +26,43 @@ class Offer:
 
 class Cryptobot(FA2.FA2):
     def __init__(self, config, metadata, admin):
+        list_of_views = [
+            self.get_balance
+            , self.token_metadata
+            , self.does_token_exist
+            , self.count_tokens
+            , self.all_tokens
+            , self.is_operator
+        ]
+        metadata_base = {
+          "name": "3D Cryptobot"
+          , "version": "1.0"
+          , "description" :"Users created NFT 3D Cryptobots."
+          , "interfaces": ["TZIP-12", "TZIP-16", "TZIP-21"]
+          , "authors": [
+              "BUIDL Labs <https://buidllabs.io/>"
+          ]
+          , "homepage": "https://cryptocodeschool.in/tezos"
+          , "source": {
+              "tools": ["SmartPy"]
+              , "location": "https://smartpy.io/templates/FA2.py"
+          },
+          "date": "2021-03-9T00:00:00+00:00",
+          "tags": ["3D", "Cryptobot", "Collectables", "NFT"],
+          "language": "en",
+          "pictures": [
+            {
+                "link": "ipfs://QmXqZLz5UyEoYsn41CM9jf9cN2XurLQ8NML8hVTea2FnqT",
+                "type": "logo"
+            }
+          ]
+          , "views": list_of_views
+          , "fa2-smartpy": {
+                "configuration" :
+                dict([(k, getattr(config, k)) for k in dir(config) if "__" not in k and k != 'my_map'])
+            }
+        }
+        self.init_metadata("metadata_base", metadata_base)
         FA2.FA2_core.__init__(self, config, metadata,
             paused = False, administrator = admin,
             offer = sp.big_map(tkey = Offer.get_key_type(), tvalue = Offer.get_value_type()),
@@ -252,7 +289,7 @@ if "templates" not in __name__:
         scenario.table_of_contents()
 
         scenario.h2("Accounts")
-        admin = sp.address("tz1iLVzBpCNTGz6tCBK2KHaQ8o44mmhLTBio")
+        admin = sp.address("tz1bu5nmSkxYWRGU82HHHNcbTq1NciiyhntE")
         alice = sp.test_account("Alice")
         bob = sp.test_account("Bob")
 
@@ -263,7 +300,7 @@ if "templates" not in __name__:
         # TODO: add latest contract metadata json 
         
         c1 = Cryptobot( config = FA2.FA2_config(non_fungible = True, assume_consecutive_token_ids = False, store_total_supply = False),
-                      metadata=sp.metadata_of_url("ipfs://Qmayz5PNcQf8GmDdQfoZfUdvwLFKSBxHU1snmhFbcabyNk"),
+                      metadata=sp.metadata_of_url("ipfs://QmRLicUooP6g88NYo8e59rhLJByywha1bASMEB9ysh5AYM"),
                       admin = admin
         )
         scenario += c1
