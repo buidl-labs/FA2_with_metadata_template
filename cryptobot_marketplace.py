@@ -47,7 +47,7 @@ class Cryptobot(FA2.FA2):
               "tools": ["SmartPy"]
               , "location": "https://smartpy.io/templates/FA2.py"
           },
-          "date": "2021-03-9T00:00:00+00:00",
+          "date": "2021-03-11",
           "tags": ["3D", "Cryptobot", "Collectables", "NFT"],
           "language": "en",
           "pictures": [
@@ -66,13 +66,12 @@ class Cryptobot(FA2.FA2):
         FA2.FA2_core.__init__(self, config, metadata,
             paused = False, administrator = admin,
             offer = sp.big_map(tkey = Offer.get_key_type(), tvalue = Offer.get_value_type()),
-            current_supply = sp.nat(0),
             initial_hodlers = sp.big_map(tkey = sp.TAddress, tvalue = sp.TNat))
             
     @sp.entry_point
     def offer_bot_for_sale(self, params):
         
-        sp.verify(~ self.data.paused)
+        sp.verify( ~self.is_paused() , "CONTRACT IS PAUSED")
         
         sp.set_type(params.token_id, sp.TNat)
         sp.set_type(params.sale_price, sp.TMutez)
@@ -86,15 +85,19 @@ class Cryptobot(FA2.FA2):
         
         #Make sure that the caller is the owner of NFT token id else throw error 
         sp.if self.data.ledger.contains(user):
-            # Make NFT with token id open for offers
-            self.data.offer[params.token_id] = sp.record(is_for_sale = True, seller = sp.sender, sale_value = params.sale_price)
+            # Make sure user is the current owner of the NFT
+            sp.if self.data.ledger[user].balance == 1:
+                # Make NFT with token id open for offers
+                self.data.offer[params.token_id] = sp.record(is_for_sale = True, seller = sp.sender, sale_value = params.sale_price)
+            sp.else:
+                sp.failwith(self.error_message.insufficient_balance())
         sp.else:
             sp.failwith("NOT OWNER OF NFT TOKEN ID")
     
     @sp.entry_point
     def bot_no_longer_for_sale(self, params):
 
-        sp.verify(~ self.data.paused)
+        sp.verify( ~self.is_paused() , "CONTRACT IS PAUSED")
         
         sp.set_type(params.token_id, sp.TNat)
         
@@ -108,14 +111,19 @@ class Cryptobot(FA2.FA2):
         
         #Make sure that the caller is the owner of NFT token id else throw error 
         sp.if self.data.ledger.contains(user):
-            # Remove NFT token id from offers list
-            del self.data.offer[params.token_id]
+            # Make sure user is the current owner of the NFT
+            sp.if self.data.ledger[user].balance == 1:
+                # Remove NFT token id from offers list
+                del self.data.offer[params.token_id]
+            sp.else:
+                sp.failwith(self.error_message.insufficient_balance())
         sp.else:
             sp.failwith("NOT OWNER OF NFT TOKEN ID")
             
     @sp.entry_point
     def purchase_bot_at_sale_price(self, params):
-        sp.verify(~ self.data.paused)
+        
+        sp.verify( ~self.is_paused() , "CONTRACT IS PAUSED")
         
         sp.set_type(params.token_id, sp.TNat)
         
@@ -135,6 +143,8 @@ class Cryptobot(FA2.FA2):
         # Make sure seller is owner of the token id
         user = self.ledger_key.make(seller, params.token_id)
         sp.verify(self.data.ledger.contains(user) == True, "NOT OWNER OF NFT TOKEN ID")
+        # Make sure user is the current owner of the NFT
+        sp.verify(self.data.ledger[user].balance == 1, self.error_message.insufficient_balance())
         
         # Make sure that sale value is equivalent to sp.amount
         sp.verify(self.data.offer[params.token_id].sale_value == sp.amount, "INCORRECT AMOUNT")
@@ -160,12 +170,10 @@ class Cryptobot(FA2.FA2):
     @sp.entry_point
     def mint(self, params):
         
-        sp.verify(~ self.data.paused)
-        
-        self.data.current_supply = sp.len(self.data.all_tokens)
+        sp.verify( ~self.is_paused() , "CONTRACT IS PAUSED")
         
         # Limit total supply to 10,000 3D Cryptobots
-        sp.verify(self.data.current_supply < 10000, "3D Cryptobot NFT creation limit exceeded")
+        sp.verify(sp.len(self.data.all_tokens) < 10000, "3D Cryptobot NFT creation limit exceeded")
         
         # Don't let one tezos address to mint more than 5 cryptobots
         sp.if self.data.initial_hodlers.contains(sp.sender):
@@ -198,7 +206,9 @@ class Cryptobot(FA2.FA2):
         
     @sp.entry_point
     def transfer(self, params):
-        sp.verify( ~self.is_paused() )
+        
+        sp.verify( ~self.is_paused() , "CONTRACT IS PAUSED")
+        
         sp.set_type(params, self.batch_transfer.get_type())
         sp.for transfer in params:
           current_from = transfer.from_
@@ -243,14 +253,16 @@ class Cryptobot(FA2.FA2):
         
                 #Make sure that the caller is the owner of NFT token id else throw error 
                 sp.if self.data.ledger.contains(user):
-                    # Remove NFT token id from offers list
-                    sp.if self.data.offer.contains(tx.token_id):
-                        del self.data.offer[tx.token_id]
+                    # Make sure user is the current owner of the NFT
+                    sp.if self.data.ledger[user].balance == 1:
+                        # Remove NFT token id from offers list
+                        sp.if self.data.offer.contains(tx.token_id):
+                            del self.data.offer[tx.token_id]
         
     @sp.entry_point
     def burn(self, params):
         
-        self.is_administrator(sp.sender)
+        sp.verify(self.is_administrator(sp.sender), "INVALID_ADMIN_ADDRESS")
         
         sp.set_type(params.token_id, sp.TNat)
         sp.set_type(params.address, sp.TAddress)
@@ -296,8 +308,6 @@ if "templates" not in __name__:
         scenario.show([alice, bob])
 
         scenario.h2("Contract")
-
-        # TODO: add latest contract metadata json 
         
         c1 = Cryptobot( config = FA2.FA2_config(non_fungible = True, assume_consecutive_token_ids = False, store_total_supply = False),
                       metadata=sp.metadata_of_url("ipfs://QmRLicUooP6g88NYo8e59rhLJByywha1bASMEB9ysh5AYM"),
@@ -305,36 +315,155 @@ if "templates" not in __name__:
         )
         scenario += c1
         
-
+        # Alice mints a nft
+        scenario += c1.mint(address = alice.address,
+                            amount = 1,
+                            token_id = 1,
+                            metadata = {'': sp.bytes_of_string('')}).run(sender = alice)
+        # Alice puts nft on sale
+        scenario += c1.offer_bot_for_sale(token_id = 1, sale_price = sp.mutez(1000)).run(sender = alice)
+        # Alice withdraws nft from sale
+        scenario += c1.bot_no_longer_for_sale(token_id = 1).run(sender = alice)
+        
+        # Bob mints a nft
+        scenario += c1.mint(address = bob.address,
+                            amount = 1,
+                            token_id = 2,
+                            metadata = {'': sp.bytes_of_string('')}).run(sender = bob)
+        # Bob puts nft on sale
+        scenario += c1.offer_bot_for_sale(token_id = 2, sale_price = sp.mutez(1000)).run(sender = bob)
+        
+        # Alice transfer's nft to admin address directly
+        scenario += c1.transfer(
+                [
+                    c1.batch_transfer.item(from_ = alice.address,
+                                        txs = [
+                                            sp.record(to_ = admin,
+                                                      amount = 1,
+                                                      token_id = 1)])
+                ]).run(sender = alice)
+        
+        # Alice tries to put previously owned nft on sale
+        scenario += c1.offer_bot_for_sale(token_id = 1, sale_price = sp.mutez(1000)).run(sender = alice, valid = False)
+        
+        # Alice tries to transfer back previously owned nft to own address
+        scenario += c1.transfer(
+                [
+                    c1.batch_transfer.item(from_ = alice.address,
+                                        txs = [
+                                            sp.record(to_ = alice.address,
+                                                      amount = 1,
+                                                      token_id = 1)])
+                ]).run(sender = alice, valid = False)
+        
+        # Admin puts nft on sale
+        scenario += c1.offer_bot_for_sale(token_id = 1, sale_price = sp.mutez(1000)).run(sender = admin)
+        
+        # Admin burns the owned nft
+        scenario += c1.burn(token_id = 1, address = admin).run(sender = admin)
+        
+        # Alice again mints nft with token_id 1
         scenario += c1.mint(address = alice.address,
                             amount = 1,
                             token_id = 1,
                             metadata = {'': sp.bytes_of_string('')}).run(sender = alice)
         
+        # Alice purchases bob nft
+        scenario += c1.purchase_bot_at_sale_price(token_id = 2).run(sender = alice, amount = sp.mutez(1000))
+        
+        # Bob tries to put previously own nft on sale
+        scenario += c1.offer_bot_for_sale(token_id = 2, sale_price = sp.mutez(1000)).run(sender = bob, valid = False)
+        
+        # Admin tries to burn token with wrong owner
+        scenario += c1.burn(token_id = 2, address = bob.address).run(sender = admin, valid = False)
+        
+        # -------------------
+        
+        # Alice mints another nft
         scenario += c1.mint(address = alice.address,
                             amount = 1,
-                            token_id = 2,
+                            token_id = 3,
                             metadata = {'': sp.bytes_of_string('')}).run(sender = alice)
         
-        scenario += c1.mint(address = alice.address, 
+        # Alice puts nft on sale with price of 0 xtz
+        scenario += c1.offer_bot_for_sale(token_id = 3, sale_price = sp.mutez(0)).run(sender = alice, valid = False)
+        
+        # Alice tries to burn previously created nft 
+        scenario += c1.burn(token_id = 3, address = alice.address).run(sender = alice, valid = False)
+        
+        # Alice puts bot on sale with price more than 0 xtz
+        scenario += c1.offer_bot_for_sale(token_id = 3, sale_price = sp.mutez(2000)).run(sender = alice)
+        
+        # Alice puts bot on sale twice
+        scenario += c1.offer_bot_for_sale(token_id = 3, sale_price = sp.mutez(3000)).run(sender = alice)
+        
+        
+        # -------------------
+        
+        # Alice mints another nft
+        scenario += c1.mint(address = alice.address,
+                            amount = 1,
+                            token_id = 4,
+                            metadata = {'': sp.bytes_of_string('')}).run(sender = alice)
+        # Alice transfers nft to bob
+        scenario += c1.transfer(
+                [
+                    c1.batch_transfer.item(from_ = alice.address,
+                                        txs = [
+                                            sp.record(to_ = bob.address,
+                                                      amount = 1,
+                                                      token_id = 4)])
+                ]).run(sender = alice)
+        # Make sure that only owner of nft can put it on sale
+        scenario += c1.offer_bot_for_sale(token_id = 4, sale_price = sp.mutez(2000)).run(sender = alice, valid = False)
+        
+        scenario += c1.offer_bot_for_sale(token_id = 4, sale_price = sp.mutez(2000)).run(sender = bob)
+        # Make sure bot can be withdrawn by the owner only
+        scenario += c1.bot_no_longer_for_sale(token_id = 4).run(sender = alice, valid = False)
+        
+        # Make sure bot can be purchased at sale value only
+        scenario += c1.purchase_bot_at_sale_price(token_id = 4).run(sender = alice, amount = sp.mutez(1000), valid = False)
+        
+        scenario += c1.purchase_bot_at_sale_price(token_id = 4).run(sender = alice, amount = sp.mutez(2000))
+
+        # -------------------
+        
+        # Allow one xtz address to mint only 5 nft bots
+        
+        scenario += c1.mint(address = alice.address,
                             amount = 1,
                             token_id = 5,
                             metadata = {'': sp.bytes_of_string('')}).run(sender = alice)
         
+        scenario += c1.mint(address = alice.address,
+                            amount = 1,
+                            token_id = 6,
+                            metadata = {'': sp.bytes_of_string('')}).run(sender = alice, valid = False)
         
-        scenario += c1.offer_bot_for_sale(token_id = 5, sale_price = sp.mutez(1000)).run(sender = alice)
+        # -------------------
         
-        # scenario += c1.burn(token_id = 5, address = alice.address).run(sender = admin)
+        # Admin pauses the contract 
+        scenario += c1.set_pause(True).run(sender = admin)
         
-    
-        # scenario += c1.purchase_bot_at_sale_price(token_id = 5).run(sender = bob, amount = sp.mutez(1000))
+        # Make sure all entry_point are inaccessible after contract is paused 
+        scenario += c1.mint(address = alice.address,
+                            amount = 1,
+                            token_id = 4,
+                            metadata = {'': sp.bytes_of_string('')}).run(sender = alice, valid = False)
         
-        # scenario += c1.bot_no_longer_for_sale(token_id = 5).run(sender = alice)
-        # scenario += c1.transfer(
-        #         [
-        #             c1.batch_transfer.item(from_ = alice.address,
-        #                                 txs = [
-        #                                     sp.record(to_ = bob.address,
-        #                                               amount = 1,
-        #                                               token_id = 1)])
-        #         ]).run(sender = alice)
+        scenario += c1.offer_bot_for_sale(token_id = 4, sale_price = sp.mutez(3000)).run(sender = alice, valid = False)
+        
+        scenario += c1.bot_no_longer_for_sale(token_id = 4).run(sender = alice, valid = False)
+        
+        scenario += c1.purchase_bot_at_sale_price(token_id = 4).run(sender = alice, amount = sp.mutez(3000), valid = False)
+        
+        scenario += c1.transfer(
+                [
+                    c1.batch_transfer.item(from_ = alice.address,
+                                        txs = [
+                                            sp.record(to_ = alice.address,
+                                                      amount = 1,
+                                                      token_id = 4)])
+                ]).run(sender = alice, valid = False)
+        
+        # -------------------
