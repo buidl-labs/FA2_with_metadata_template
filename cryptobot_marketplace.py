@@ -1,3 +1,5 @@
+# Make sure to go mainnet only after contract is atleast aduited once. 
+
 import smartpy as sp
 
 FA2 = sp.import_script_from_url("https://smartpy.io/templates/FA2.py")
@@ -204,7 +206,6 @@ class Cryptobot(FA2.FA2):
                  amount = params.amount,
                  metadata = params.metadata)
     
-    # TODO: Admin can transfer any token currently; Don't allow it.    
     @sp.entry_point
     def transfer(self, params):
         
@@ -217,20 +218,9 @@ class Cryptobot(FA2.FA2):
                 #sp.verify(tx.amount > 0, message = "TRANSFER_OF_ZERO")
                 if self.config.single_asset:
                     sp.verify(tx.token_id == 0, "single-asset: token-id <> 0")
-                if self.config.support_operator:
-                          sp.verify(
-                              (self.is_administrator(sp.sender)) |
-                              (current_from == sp.sender) |
-                              self.operator_set.is_member(self.data.operators,
-                                                          current_from,
-                                                          sp.sender,
-                                                          tx.token_id),
-                              message = self.error_message.not_operator())
-                else:
-                          sp.verify(
-                              (self.is_administrator(sp.sender)) |
-                              (current_from == sp.sender),
-                              message = self.error_message.not_owner())
+
+                sp.verify(current_from == sp.sender, message = self.error_message.not_owner())
+                
                 sp.verify(self.data.tokens.contains(tx.token_id),
                           message = self.error_message.token_undefined())
                 # If amount is 0 we do nothing now:
@@ -350,6 +340,16 @@ if "templates" not in __name__:
         
         # Alice tries to put previously owned nft on sale
         scenario += c1.offer_bot_for_sale(token_id = 1, sale_price = sp.mutez(1000)).run(sender = alice, valid = False)
+        
+        # Only allow owner of the token to transfer token
+        scenario += c1.transfer(
+                [
+                    c1.batch_transfer.item(from_ = bob.address,
+                                        txs = [
+                                            sp.record(to_ = alice.address,
+                                                      amount = 1,
+                                                      token_id = 1)])
+                ]).run(sender = admin, valid = False)
         
         # Alice tries to transfer back previously owned nft to own address
         scenario += c1.transfer(
