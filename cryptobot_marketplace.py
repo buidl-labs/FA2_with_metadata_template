@@ -203,7 +203,8 @@ class Cryptobot(FA2.FA2):
              self.data.tokens[params.token_id] = self.token_meta_data.make(
                  amount = params.amount,
                  metadata = params.metadata)
-        
+    
+    # TODO: Admin can transfer any token currently; Don't allow it.    
     @sp.entry_point
     def transfer(self, params):
         
@@ -250,14 +251,12 @@ class Cryptobot(FA2.FA2):
                 
                 # Remove bot from sale if true
                 user = self.ledger_key.make(current_from, tx.token_id)
-        
-                #Make sure that the caller is the owner of NFT token id else throw error 
+                
+                #Make sure it's a valid user 
                 sp.if self.data.ledger.contains(user):
-                    # Make sure user is the current owner of the NFT
-                    sp.if self.data.ledger[user].balance == 1:
+                    sp.if self.data.offer.contains(tx.token_id):
                         # Remove NFT token id from offers list
-                        sp.if self.data.offer.contains(tx.token_id):
-                            del self.data.offer[tx.token_id]
+                        del self.data.offer[tx.token_id]
         
     @sp.entry_point
     def burn(self, params):
@@ -333,6 +332,9 @@ if "templates" not in __name__:
         # Bob puts nft on sale
         scenario += c1.offer_bot_for_sale(token_id = 2, sale_price = sp.mutez(1000)).run(sender = bob)
         
+        # Alice puts nft on sale
+        scenario += c1.offer_bot_for_sale(token_id = 1, sale_price = sp.mutez(1000)).run(sender = alice)
+        
         # Alice transfer's nft to admin address directly
         scenario += c1.transfer(
                 [
@@ -342,6 +344,9 @@ if "templates" not in __name__:
                                                       amount = 1,
                                                       token_id = 1)])
                 ]).run(sender = alice)
+        
+        # Make sure transferred bot is now not on sale
+        scenario += c1.bot_no_longer_for_sale(token_id = 1).run(sender = admin, valid = False)
         
         # Alice tries to put previously owned nft on sale
         scenario += c1.offer_bot_for_sale(token_id = 1, sale_price = sp.mutez(1000)).run(sender = alice, valid = False)
